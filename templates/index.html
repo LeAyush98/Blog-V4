@@ -32,18 +32,22 @@
           <p class="post-meta">Posted by
             <a href="#">{{post.author}}</a>
             on {{post.date}}
-          
+            {% if current_user.id == 3%}
             <a href="{{url_for('delete_post', post_id=post.id) }}">✘</a>
-          
+            {% endif %}
           </p>
         </div>
+        {% if loop.index < number_of_posts%}
         <hr>
+        {% endif %}
         {% endfor %}
 
 
         <!-- New Post -->
         <div class="clearfix">
+          {% if current_user.id == 3%}
           <a class="btn btn-primary float-right" href="{{url_for('new')}}">Create New Post</a>
+          {% endif %}
         </div>
       </div>
     </div>

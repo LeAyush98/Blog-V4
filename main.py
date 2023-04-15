@@ -4,7 +4,7 @@ from flask_ckeditor import CKEditor
 from datetime import date
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_login import UserMixin, login_user, LoginManager, login_required, current_user, logout_user
-from forms import CreatePostForm, RegisterUserForm
+from forms import CreatePostForm, RegisterUserForm, LoginUserForm, ckeditor
 from flask_gravatar import Gravatar
 from models import db, BlogPost, Users
 from dotenv import load_dotenv
@@ -16,7 +16,6 @@ SECRET_KEY = os.getenv("SECRET_KEY")
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = SECRET_KEY
-ckeditor = CKEditor(app)
 Bootstrap(app)
 
 login_manager = LoginManager()
@@ -31,13 +30,26 @@ app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///blog.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db.init_app(app)
+ckeditor.init_app(app)
+
+def admin(function):
+    def wrapper():
+        print("wrapper working")
+        if current_user.id == 3:
+            print(f"id is {current_user.id}")
+            return function()
+        else: 
+            print("else statement is running")
+            return render_template("void.html")    
+    wrapper.__name__ = function.__name__       # wrapper is using same endpoint as our functions, so to prevent error, change wrapper name to the function's 
+    return wrapper
 
 @app.route('/')
 def get_all_posts(): 
-    db.session.commit()
+    number_of_posts = db.session.query(BlogPost).count()
     # Users.__table__.drop(db.engine) #Drops a table
     posts = BlogPost.query.all()
-    return render_template("index.html", all_posts=posts, current_user = current_user)
+    return render_template("index.html", all_posts=posts, current_user = current_user, number_of_posts = number_of_posts)
 
 
 @app.route('/register', methods = ["GET", "POST"])
@@ -61,21 +73,36 @@ def register():
             return redirect(url_for("register"))
 
 
-@app.route('/login')
+@app.route('/login', methods = ["GET", "POST"])
 def login():
-    return render_template("login.html")
+    form = LoginUserForm()
+    if request.method == "GET":
+        return render_template("login.html", form = form)
+    elif request.method == "POST":
+        user = Users.query.filter_by(email=form.email.data).first()
+        if user:
+            if check_password_hash(user.password ,form.password.data):
+                login_user(user)
+                return redirect(url_for('get_all_posts'))
+            else:
+                flash(f"Password is incorrect")
+                return redirect(url_for('login'))
+        else:
+            flash(f"E-mail {form.email.data} does not exist here, Please register first")
+            return redirect(url_for('login'))
 
 
 @app.route('/logout')
 @login_required
 def logout():
+    logout_user()
     return redirect(url_for('get_all_posts'))
 
 
 @app.route("/post/<int:post_id>")
 def show_post(post_id):
     requested_post = BlogPost.query.get(post_id)
-    return render_template("post.html", post=requested_post)
+    return render_template("post.html", post=requested_post, current_user = current_user)
 
 
 @app.route("/about")
@@ -90,10 +117,11 @@ def contact():
 
 @app.route('/new-post', methods = ["GET", "POST"])
 @login_required
+@admin
 def new():
     form = CreatePostForm()
     if request.method == "GET":
-        return render_template("make-post.html", form = form)
+        return render_template("make-post.html", form = form, is_edit = False)
     
     elif request.method == "POST":
         post = BlogPost(title=form.title.data, author=form.author.data, subtitle=form.subtitle.data, img_url=form.img_url.data, body=form.body.data)
@@ -103,6 +131,8 @@ def new():
 
 
 @app.route("/edit-post/<int:index>", methods = ["GET", "POST"])
+@login_required
+@admin
 def edit_post(index):
     form = CreatePostForm()
     post = BlogPost.query.filter_by(id = index).first()
@@ -113,7 +143,7 @@ def edit_post(index):
             form.img_url.data = post.img_url
             form.author.data = post.author
             form.body.data = post.body
-            return render_template("make-post.html", form=form)
+            return render_template("make-post.html", form=form, is_edit = True)
         else: 
             return jsonify({"error": "Please enter a valid ID"})   
     elif request.method == "POST":
@@ -127,6 +157,7 @@ def edit_post(index):
 
 @app.route("/delete/<int:post_id>")
 @login_required
+@admin
 def delete_post(post_id):
     post_to_delete = BlogPost.query.get(post_id)
     db.session.delete(post_to_delete)
