@@ -19,7 +19,7 @@
   <div class="container">
     <div class="row">
       <div class="col-lg-8 col-md-10 mx-auto">
-        {% for post in all_posts %}
+        {% for post in all_posts | reverse %}
         <div class="post-preview">
           <a href="{{ url_for('show_post', post_id=post.id) }}">
             <h2 class="post-title">
@@ -32,7 +32,7 @@
           <p class="post-meta">Posted by
             <a href="#">{{post.author}}</a>
             on {{post.date}}
-            {% if current_user.id == 3%}
+            {% if current_user.id == post.user_id or current_user.id == 1%}
             <a href="{{url_for('delete_post', post_id=post.id) }}">✘</a>
             {% endif %}
           </p>
@@ -45,9 +45,10 @@
 
         <!-- New Post -->
         <div class="clearfix">
-          {% if current_user.id == 3%}
-          <a class="btn btn-primary float-right" href="{{url_for('new')}}">Create New Post</a>
+          {% if current_user.is_authenticated %}
+          <a class="btn btn-dark float-right" href="{{url_for('new')}}">Create New Post</a>
           {% endif %}
+          
         </div>
       </div>
     </div>

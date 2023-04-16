@@ -1,8 +1,5 @@
-{% extends 'bootstrap/base.html' %}
-{% import "bootstrap/wtf.html" as wtf %}
-
-{% block content %}
 {% include "header.html" %}
+{% import "bootstrap/wtf.html" as wtf %}
 
   <!-- Page Header -->
   <header class="masthead" style="background-image: url('https://images.unsplash.com/photo-1484100356142-db6ab6244067?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=crop&w=800&q=80')">
@@ -34,10 +31,9 @@
             </ul>
         {% endif %}
         {% endwith %}
-        {{ wtf.quick_form(form, button_map={"submit": "primary"}) }}
+        {{ wtf.quick_form(form, button_map={"submit": "dark"}) }}
     </div>
   </div>
 
 
 {% include "footer.html" %}
-{% endblock %}

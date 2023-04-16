@@ -1,11 +1,13 @@
 {% include "header.html" %}
+{% import "bootstrap/wtf.html" as wtf %}
+
 
   <!-- Page Header -->
   <header class="masthead" style="background-image: url('{{post.img_url}}')">
     <div class="overlay"></div>
     <div class="container">
       <div class="row">
-        <div class="col-lg-8 col-md-10 mx-auto">
+        <div class="col-lg-8 col-md-10 mx-auto" style="backdrop-filter:blur(10px);">
           <div class="post-heading">
             <h1>{{post.title}}</h1>
             <h2 class="subheading">{{post.subtitle}}</h2>
@@ -26,32 +28,65 @@
             {{ post.body|safe }}
           <hr>
 
-            <div class="clearfix">
-            {% if current_user.id == 3%}
-            <a class="btn btn-primary float-right" href="{{url_for('edit_post', post_id=post.id)}}">Edit Post</a>
-            {% endif %}
-            </div>
 
 <!--           Comments Area -->
           <div class="col-lg-8 col-md-10 mx-auto comment">
-              <ul class="commentList">
+              <ul style= "list-style:none;">
                 <li>
+                
                     <div class="commenterImage">
-                      <img src="../static/img/cato.jpg"/>
+                      {% if comments_on_post%}
+                      {% for comment in comments_on_post%}
+                      {% if current_user.is_authenticated%}
+                      <img class="commenterImage" style = "border-radius:50%;" src="../static/img/cato{{comment.user_id}}.png"/>
+                      {% else %}
+                      <img class="commenterImage" style = "border-radius:50%;" src="../static/img/cato1.png"/>
+                      {% endif %}
                     </div>
                     <div class="commentText">
-                      <p>Lia</p>
-                      <span class="date sub-text">Well said!</span>
+                      
+                        <p>{{ authors[loop.index0] }}</p>
+                      
+                      <span class="date sub-text" style="padding-left:8px">{{comment.comment}}</span>
+                      <br>
+                      <br>
+                      {% endfor %}
+                      {% endif %}
+                      {% if not current_user.is_authenticated%}
+                        {% with messages = get_flashed_messages() %}
+                          {% if messages %}
+                              <ul class=flashes>
+                              {% for message in messages %}
+                              <div class="alert alert-warning">
+                                  {{ message }}
+                              </div>
+                              {% endfor %}
+                              </ul>
+                          {% endif %}
+                          {% endwith %}
+                      {% endif %} 
+                      <div id="commie" style= "padding-top:5%;">{{ wtf.quick_form(comment_form) }}</div>
+                      
                     </div>
                 </li>
               </ul>
+              <div class="clearfix">
+                <br>
+                <br>
+                {% if current_user.id == post.user_id or current_user.id == 1%}
+                <a class="btn btn-dark float-right" href="{{url_for('edit_post', index=post.id)}}">Edit Post</a>
+                <br>
+                {% endif %}
+                <br>
+                <br>
+                </div>
             </div>
-
-
           </div>
       </div>
     </div>
   </article>
 
   <hr>
+  <script src="//cdn.ckeditor.com/4.9.2/classic/ckeditor.js"></script>
 {% include "footer.html" %}
+

@@ -4,11 +4,11 @@ from flask_ckeditor import CKEditor
 from datetime import date
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_login import UserMixin, login_user, LoginManager, login_required, current_user, logout_user
-from forms import CreatePostForm, RegisterUserForm, LoginUserForm, ckeditor
-from flask_gravatar import Gravatar
-from models import db, BlogPost, Users
+from forms import CreatePostForm, RegisterUserForm, LoginUserForm, CommentForm, ckeditor
+from models import db, BlogPost, Users, Comment
 from dotenv import load_dotenv
 import os
+import random
 
 load_dotenv("./.env")
 
@@ -33,27 +33,41 @@ db.init_app(app)
 ckeditor.init_app(app)
 
 def admin(function):
-    def wrapper():
+    def wrapper(*args, **kw):
         print("wrapper working")
-        if current_user.id == 3:
-            print(f"id is {current_user.id}")
-            return function()
+        if current_user.id == 1:
+            return function(*args, **kw)
         else: 
             print("else statement is running")
             return render_template("void.html")    
     wrapper.__name__ = function.__name__       # wrapper is using same endpoint as our functions, so to prevent error, change wrapper name to the function's 
     return wrapper
 
+def get_author_name():
+    id = current_user.id 
+    user = Users.query.filter_by(id=id).first()
+    return user.name
+
+def get_names_list(comments_on_post)-> list:
+    names = []
+    for comment in comments_on_post:
+        author = Users.query.filter_by(id = comment.user_id).first()
+        names.append(author.name)
+    return names
+
 @app.route('/')
 def get_all_posts(): 
     number_of_posts = db.session.query(BlogPost).count()
     # Users.__table__.drop(db.engine) #Drops a table
     posts = BlogPost.query.all()
+    for post in posts:
+        print(post.author)
     return render_template("index.html", all_posts=posts, current_user = current_user, number_of_posts = number_of_posts)
 
 
 @app.route('/register', methods = ["GET", "POST"])
 def register():
+    db.create_all()
     form = RegisterUserForm()
     if request.method == "GET":
         return render_template("register.html", form = form)
@@ -99,10 +113,26 @@ def logout():
     return redirect(url_for('get_all_posts'))
 
 
-@app.route("/post/<int:post_id>")
+@app.route("/post/<int:post_id>", methods = ["GET", "POST"])
 def show_post(post_id):
+    comment_form = CommentForm()
     requested_post = BlogPost.query.get(post_id)
-    return render_template("post.html", post=requested_post, current_user = current_user)
+    comments_on_post = Comment.query.filter_by(post_id = post_id)
+    author_list = get_names_list(comments_on_post)
+    if comment_form.validate_on_submit():
+        if current_user.is_authenticated:
+            comment = Comment(comment=comment_form.comment.data, user_id=current_user.id, post_id=post_id)
+            db.session.add(comment)
+            db.session.commit()
+            return render_template("post.html", post=requested_post, current_user = current_user, comment_form = comment_form, comments_on_post = comments_on_post, 
+                                    authors = author_list)
+        else:
+            flash("Please Login or Register first")
+            return redirect(url_for('show_post', post_id = post_id))
+        
+    else:
+        return render_template("post.html", post=requested_post, current_user = current_user, comment_form = comment_form, comments_on_post = comments_on_post, 
+                               authors = author_list)
 
 
 @app.route("/about")
@@ -116,15 +146,16 @@ def contact():
 
 
 @app.route('/new-post', methods = ["GET", "POST"])
-@login_required
-@admin
+# @login_required
+# @admin
 def new():
     form = CreatePostForm()
     if request.method == "GET":
         return render_template("make-post.html", form = form, is_edit = False)
     
     elif request.method == "POST":
-        post = BlogPost(title=form.title.data, author=form.author.data, subtitle=form.subtitle.data, img_url=form.img_url.data, body=form.body.data)
+        author = get_author_name()
+        post = BlogPost(title=form.title.data, author=author, subtitle=form.subtitle.data, img_url=form.img_url.data, body=form.body.data, user_id=current_user.id)
         db.session.add(post)
         db.session.commit()
         return redirect(url_for("get_all_posts"))
@@ -141,7 +172,6 @@ def edit_post(index):
             form.title.data = post.title
             form.subtitle.data = post.subtitle
             form.img_url.data = post.img_url
-            form.author.data = post.author
             form.body.data = post.body
             return render_template("make-post.html", form=form, is_edit = True)
         else: 
@@ -150,9 +180,9 @@ def edit_post(index):
         post.title = form.title.data
         post.subtitle = form.subtitle.data
         post.img_url = form.img_url.data
-        post.author = form.author.data
         post.body = form.body.data
         db.session.commit()
+        return redirect(url_for("get_all_posts"))
 
 
 @app.route("/delete/<int:post_id>")

@@ -127,7 +127,7 @@ img::-moz-selection {
 .commentList {
     padding:0;
     list-style:none;
-    max-height:200px;
+    min-height: 300px;
     overflow:auto;
 }
 .commentList li {
@@ -144,7 +144,7 @@ img::-moz-selection {
     float:left;
 }
 .commenterImage img {
-    width:100%;
+    width: 30px;
     border-radius:50%;
 }
 .commentText p {
