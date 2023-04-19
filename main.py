@@ -4,11 +4,11 @@ from flask_ckeditor import CKEditor
 from datetime import date
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_login import UserMixin, login_user, LoginManager, login_required, current_user, logout_user
-from forms import CreatePostForm, RegisterUserForm, LoginUserForm, CommentForm, ckeditor
+from forms import CreatePostForm, RegisterUserForm, LoginUserForm, CommentForm, ContactForm, ckeditor
 from models import db, BlogPost, Users, Comment
 from dotenv import load_dotenv
 import os
-import random
+import smtplib
 
 load_dotenv("./.env")
 
@@ -55,6 +55,20 @@ def get_names_list(comments_on_post)-> list:
         names.append(author.name)
     return names
 
+def send_mail(name, email, phone, message):
+    EMAIL = os.getenv("EMAIL")
+    PASSWORD = os.getenv("PASSWORD")
+
+    connection = smtplib.SMTP("smtp.gmail.com")
+    connection.starttls()
+    connection.login(user=EMAIL, password=PASSWORD)
+    connection.sendmail(
+        from_addr=email,
+        to_addrs=EMAIL,
+        msg=f"Subject:Hello I am {name}!\n\n{message}\n\nPlease reach me out at {phone}"
+    )
+    connection.close()
+
 @app.route('/')
 def get_all_posts(): 
     number_of_posts = db.session.query(BlogPost).count()
@@ -72,8 +86,6 @@ def register():
     if request.method == "GET":
         return render_template("register.html", form = form)
     elif request.method == "POST":
-        print(form.password.data)
-        print(form.confirm_password.data)
         if form.password.data == form.confirm_password.data:
             db.create_all()
             hashed = generate_password_hash(password=form.password.data, method="pbkdf2:sha256", salt_length=8)
@@ -118,21 +130,22 @@ def show_post(post_id):
     comment_form = CommentForm()
     requested_post = BlogPost.query.get(post_id)
     comments_on_post = Comment.query.filter_by(post_id = post_id)
+    comment_count = Comment.query.filter_by(post_id = post_id).count()
     author_list = get_names_list(comments_on_post)
     if comment_form.validate_on_submit():
         if current_user.is_authenticated:
             comment = Comment(comment=comment_form.comment.data, user_id=current_user.id, post_id=post_id)
             db.session.add(comment)
             db.session.commit()
-            return render_template("post.html", post=requested_post, current_user = current_user, comment_form = comment_form, comments_on_post = comments_on_post, 
-                                    authors = author_list)
+            return redirect(url_for('show_post', post_id = post_id))
         else:
             flash("Please Login or Register first")
             return redirect(url_for('show_post', post_id = post_id))
         
     else:
+        
         return render_template("post.html", post=requested_post, current_user = current_user, comment_form = comment_form, comments_on_post = comments_on_post, 
-                               authors = author_list)
+                               authors = author_list, comment_count = comment_count)
 
 
 @app.route("/about")
@@ -140,14 +153,18 @@ def about():
     return render_template("about.html")
 
 
-@app.route("/contact")
+@app.route("/contact", methods = ["GET", "POST"])
 def contact():
-    return render_template("contact.html")
+    contact = ContactForm()
+    if request.method == "GET":
+        return render_template("contact.html", form = contact)
+    elif request.method == "POST":
+        send_mail(contact.name.data, contact.email.data , contact.phone.data, contact.message.data)
+        return redirect(url_for('get_all_posts'))
 
 
 @app.route('/new-post', methods = ["GET", "POST"])
-# @login_required
-# @admin
+@login_required
 def new():
     form = CreatePostForm()
     if request.method == "GET":

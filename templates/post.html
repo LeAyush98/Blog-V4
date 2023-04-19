@@ -7,12 +7,12 @@
     <div class="overlay"></div>
     <div class="container">
       <div class="row">
-        <div class="col-lg-8 col-md-10 mx-auto" style="backdrop-filter:blur(10px);">
+        <div class="col-lg-8 col-md-10 mx-auto">
           <div class="post-heading">
-            <h1>{{post.title}}</h1>
-            <h2 class="subheading">{{post.subtitle}}</h2>
+            <h1 style="backdrop-filter:blur(10px);">{{post.title}}</h1>
+            <h2 style="backdrop-filter:blur(10px);" class="subheading">{{post.subtitle}}</h2>
             <span class="meta">Posted by
-              <a href="#">{{post.author}}</a>
+              <a style="backdrop-filter:blur(10px);" href="#">{{post.author}}</a>
               on {{post.date}}</span>
           </div>
         </div>
@@ -64,9 +64,13 @@
                               </ul>
                           {% endif %}
                           {% endwith %}
+                          
                       {% endif %} 
-                      <div id="commie" style= "padding-top:5%;">{{ wtf.quick_form(comment_form) }}</div>
-                      
+                      {% if comment_count < 1 %}
+                      <div id="commie" style= "padding-top:5%; width:200px">{{ wtf.quick_form(comment_form) }}</div>
+                      {% else %}
+                      <div id="commie" style= "padding-top:5%">{{ wtf.quick_form(comment_form) }}</div>
+                      {% endif%}
                     </div>
                 </li>
               </ul>
