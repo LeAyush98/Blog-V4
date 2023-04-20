@@ -71,6 +71,7 @@ def send_mail(name, email, phone, message):
 
 @app.route('/')
 def get_all_posts(): 
+    db.create_all()
     number_of_posts = db.session.query(BlogPost).count()
     # Users.__table__.drop(db.engine) #Drops a table
     posts = BlogPost.query.all()
@@ -81,13 +82,12 @@ def get_all_posts():
 
 @app.route('/register', methods = ["GET", "POST"])
 def register():
-    db.create_all()
+    
     form = RegisterUserForm()
     if request.method == "GET":
         return render_template("register.html", form = form)
     elif request.method == "POST":
         if form.password.data == form.confirm_password.data:
-            db.create_all()
             hashed = generate_password_hash(password=form.password.data, method="pbkdf2:sha256", salt_length=8)
             user = Users(email=form.email.data, password= hashed, name=form.name.data)
             db.session.add(user)
